@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>双面板数字统计（最后10组）</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 0 15px;
+            background: #f7f8fa;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+            font-size: 18px;
+        }
+        .input-area {
+            margin: 20px 0;
+        }
+        .dataInput {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        .btn-add {
+            background: #409eff;
+            color: white;
+        }
+        .btn-add:hover {
+            background: #338ecc;
+        }
+        .btn-clear {
+            background: #f56c6c;
+            color: white;
+        }
+        .btn-clear:hover {
+            background: #e05555;
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 18px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+        .result-box h4 {
+            margin: 0 0 10px 0;
+            color: #555;
+            font-size: 15px;
+        }
+        .last10Data {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #ddd;
+            word-break: break-all;
+        }
+        .digit-list {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        .digit-item {
+            padding: 8px 5px;
+            text-align: center;
+            background: white;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .min-digit {
+            color: red !important;
+            font-weight: bold !important;
+            font-size: 15px !important;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ================== 第一个统计面板 ================== -->
+<div class="container">
+    <h2>📊 第一组：0-9 数字统计（最后10组）</h2>
+    <div class="input-area">
+        <input type="text" class="dataInput" id="dataInput1" placeholder="例如：24,44,19,25,01">
+        <div class="btn-group">
+            <button class="btn-add" onclick="addData1()">➕ 追加</button>
+            <button class="btn-clear" onclick="clearAll1()">🔄 清空</button>
+        </div>
+    </div>
+    <div class="result-box">
+        <h4>✅ 最后10组数据：</h4>
+        <div class="last10Data" id="last10Data1"></div>
+        <h4>📌 统计（红色=最少2个）：</h4>
+        <div id="countResult1" class="digit-list"></div>
+
+        <input type="text2" class="dataInput2" id="dataInput1" placeholder="例如：01">
+    </div>
+</div>
+
+<!-- ================== 第二个统计面板 ================== -->
+<div class="container">
+    <h2>📊 第二组：0-9 数字统计（最后10组）</h2>
+    <div class="input-area">
+        <input type="text" class="dataInput" id="dataInput2" placeholder="例如：24,44,19,25,01">
+       
+        <div class="btn-group">
+            <button class="btn-add" onclick="addData2()">➕ 追加</button>
+            <button class="btn-clear" onclick="clearAll2()">🔄 清空</button>
+        </div>
+    </div>
+    <div class="result-box">
+        <h4>✅ 最后10组数据：</h4>
+        <div class="last10Data" id="last10Data2"></div>
+        <h4>📌 统计（红色=最少2个）：</h4>
+        <div id="countResult2" class="digit-list"></div>
+
+        <input type="text3" class="dataInput3" id="dataInput1" placeholder="例如：01">
+    </div>
+</div>
+
+<script>
+// ======================================
+// 第一组数据
+// ======================================
+let allData1 = ["24", "44", "19", "25", "74", "67", "81", "75", "35", "92", "93", "11"];
+window.onload = function () {
+    const i1 = document.getElementById('dataInput1');
+    i1.addEventListener('keyup', e => e.key === 'Enter' && addData1());
+    const i2 = document.getElementById('dataInput2');
+    i2.addEventListener('keyup', e => e.key === 'Enter' && addData2());
+    countLast10_1();
+    countLast10_2();
+};
+
+function addData1() {
+    const i = document.getElementById('dataInput1');
+    const v = i.value.trim();
+    if (!v) { alert('请输入数字'); return; }
+    const arr = v.split(',').map(x=>x.trim()).filter(x=>/^\d+$/.test(x));
+    allData1.push(...arr);
+    i.value = '';
+    i.focus();
+    countLast10_1();
+}
+
+function countLast10_1() {
+    const last10 = allData1.slice(-10);
+    const c = [0,0,0,0,0,0,0,0,0,0];
+    last10.forEach(s => s.split('').forEach(d => c[+d]++));
+    const sorted = c.map((n,i)=>({n,i})).sort((a,b)=>a.n-b.n);
+    const mins = [sorted[0].i, sorted[1].i];
+    document.getElementById('last10Data1').innerText = last10.join(' , ');
+    let html = '';
+    c.forEach((n,i)=>{
+        const cls = mins.includes(i) ? 'digit-item min-digit' : 'digit-item';
+        html += `<div class="${cls}">${i}：${n}次</div>`;
+    });
+    document.getElementById('countResult1').innerHTML = html;
+}
+
+function clearAll1() {
+    allData1 = [];
+    countLast10_1();
+}
+
+// ======================================
+// 第二组数据
+// ======================================
+let allData2 = ["24", "44", "19", "25", "74", "67", "81", "75", "35", "92", "93", "11"];
+
+function addData2() {
+    const i = document.getElementById('dataInput2');
+    const v = i.value.trim();
+    if (!v) { alert('请输入数字'); return; }
+    const arr = v.split(',').map(x=>x.trim()).filter(x=>/^\d+$/.test(x));
+    allData2.push(...arr);
+    i.value = '';
+    i.focus();
+    countLast10_2();
+}
+
+function countLast10_2() {
+    const last10 = allData2.slice(-10);
+    const c = [0,0,0,0,0,0,0,0,0,0];
+    last10.forEach(s => s.split('').forEach(d => c[+d]++));
+    const sorted = c.map((n,i)=>({n,i})).sort((a,b)=>a.n-b.n);
+    const mins = [sorted[0].i, sorted[1].i];
+    document.getElementById('last10Data2').innerText = last10.join(' , ');
+    let html = '';
+    c.forEach((n,i)=>{
+        const cls = mins.includes(i) ? 'digit-item min-digit' : 'digit-item';
+        html += `<div class="${cls}">${i}：${n}次</div>`;
+    });
+    document.getElementById('countResult2').innerHTML = html;
+}
+
+function clearAll2() {
+    allData2 = [];
+    countLast10_2();
+}
+</script>
+</body>
+</html>

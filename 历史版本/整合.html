@@ -1,0 +1,600 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腾讯IM在线人数查询</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .button-container {
+            margin-bottom: 30px;
+        }
+        
+        .fetch-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .fetch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .fetch-btn:active {
+            transform: translateY(0);
+        }
+        
+        .fetch-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .data-container {
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .data-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .data-title span {
+            font-size: 14px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .data-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .data-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .data-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .data-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .item-index {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .item-content {
+            flex-grow: 1;
+            margin-left: 15px;
+        }
+        
+        .item-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .item-value {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .item-time {
+            font-size: 12px;
+            color: #999;
+            text-align: right;
+            min-width: 120px;
+        }
+        
+        /* 新增：5位数字展示区域样式 */
+        .code-display-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #e2e8f0;
+        }
+        
+        .code-title {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .code-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        
+        .code-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 5px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .code-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .error-message {
+            background: #fff5f5;
+            border-left: 4px solid #f56565;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error-message.active {
+            display: block;
+        }
+        
+        .error-title {
+            color: #c53030;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .error-detail {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .empty-text {
+            font-size: 16px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .data-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .item-time {
+                text-align: left;
+                margin-top: 10px;
+                min-width: auto;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .code-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>腾讯IM在线人数查询</h1>
+        <p class="subtitle">点击按钮获取最新的在线用户数据</p>
+        
+        <div class="button-container">
+            <button class="fetch-btn" id="fetchBtn">获取在线人数数据</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">正在获取数据，请稍候...</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage">
+            <div class="error-title">获取数据失败</div>
+            <div class="error-detail" id="errorDetail"></div>
+        </div>
+        
+        <div class="data-container" id="dataContainer">
+            <div class="data-title">
+                在线人数数据
+                <span id="dataCount">共 0 条记录</span>
+            </div>
+            
+            <div class="data-list" id="dataList">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">📊</div>
+                    <div class="empty-text">暂无数据，请点击上方按钮获取</div>
+                </div>
+            </div>
+            
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-item">
+                    <div class="stat-value" id="currentOnline">0</div>
+                    <div class="stat-label">当前在线人数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalChange">0</div>
+                    <div class="stat-label">总变化量</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="avgOnline">0</div>
+                    <div class="stat-label">平均在线人数</div>
+                </div>
+            </div>
+            
+            <!-- 新增：5位数字展示区域 -->
+            <div class="code-display-section" id="codeSection" style="display: none;">
+                <div class="code-title">整合后的5位数字码（前10条）</div>
+                <div class="code-grid" id="codeGrid">
+                    <!-- 动态生成的5位数字将显示在这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const fetchBtn = document.getElementById('fetchBtn');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorDetail = document.getElementById('errorDetail');
+        const dataList = document.getElementById('dataList');
+        const emptyState = document.getElementById('emptyState');
+        const dataCount = document.getElementById('dataCount');
+        const stats = document.getElementById('stats');
+        const currentOnline = document.getElementById('currentOnline');
+        const totalChange = document.getElementById('totalChange');
+        const avgOnline = document.getElementById('avgOnline');
+        const codeSection = document.getElementById('codeSection');
+        const codeGrid = document.getElementById('codeGrid');
+        
+        // 代理服务器地址
+        const proxyUrl = 'http://localhost:3000/get-data';
+        
+        // 格式化数字，添加千位分隔符
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        
+        // 计算5位数字码
+        // 规则：
+        // 1. 后四位取当前在线人数的后四位
+        // 2. 第一位是当前在线人数每位相加的尾数
+        function generateFiveDigitCode(number) {
+            // 确保输入是数字或字符串
+            const numStr = number.toString();
+            
+            // 计算每位数字之和
+            let sum = 0;
+            for (let i = 0; i < numStr.length; i++) {
+                const digit = parseInt(numStr[i]);
+                if (!isNaN(digit)) {
+                    sum += digit;
+                }
+            }
+            
+            // 取和的尾数（个位数）
+            const firstDigit = sum % 10;
+            
+            // 获取后四位
+            const lastFourDigits = numStr.slice(-4).padStart(4, '0');
+            
+            // 组合成5位数字
+            const fiveDigitCode = `${firstDigit}${lastFourDigits}`;
+            
+            return fiveDigitCode;
+        }
+        
+        // 更新统计数据
+        function updateStats(data) {
+            if (!data || data.length === 0) return;
+            
+            // 当前在线人数（第一条数据）
+            const latest = data[0];
+            currentOnline.textContent = formatNumber(latest.onlinenumber);
+            
+            // 总变化量
+            let total = 0;
+            data.forEach(item => {
+                total += item.onlinechange;
+            });
+            totalChange.textContent = formatNumber(total);
+            
+            // 平均在线人数
+            let sum = 0;
+            data.forEach(item => {
+                sum += item.onlinenumber;
+            });
+            const avg = Math.round(sum / data.length);
+            avgOnline.textContent = formatNumber(avg);
+            
+            // 显示统计区域
+            stats.style.display = 'flex';
+        }
+        
+        // 渲染5位数字码
+        function renderCodeDigits(data) {
+            // 清空现有内容
+            codeGrid.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                codeSection.style.display = 'none';
+                return;
+            }
+            
+            // 取前10条数据生成5位数字码
+            const itemsToProcess = data.slice(0, 10);
+            
+            itemsToProcess.forEach((item, index) => {
+                const code = generateFiveDigitCode(item.onlinenumber);
+                
+                const codeItem = document.createElement('div');
+                codeItem.className = 'code-item';
+                codeItem.textContent = code;
+                codeItem.title = `原始数据: ${formatNumber(item.onlinenumber)} (${item.onlinetime})`;
+                
+                codeGrid.appendChild(codeItem);
+            });
+            
+            // 显示代码区域
+            codeSection.style.display = 'block';
+        }
+        
+        // 渲染数据列表
+        function renderData(data) {
+            // 清空现有内容
+            dataList.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                emptyState.style.display = 'block';
+                dataCount.textContent = '共 0 条记录';
+                stats.style.display = 'none';
+                codeSection.style.display = 'none';
+                return;
+            }
+            
+            // 隐藏空状态
+            emptyState.style.display = 'none';
+            
+            // 按原有顺序显示数据
+            data.forEach((item, index) => {
+                const dataItem = document.createElement('div');
+                dataItem.className = 'data-item';
+                
+                dataItem.innerHTML = `
+                    <div class="item-index">${index + 1}</div>
+                    <div class="item-content">
+                        <div class="item-label">在线人数</div>
+                        <div class="item-value">${formatNumber(item.onlinenumber)}</div>
+                    </div>
+                    <div class="item-time">
+                        ${item.onlinetime}
+                        <div style="color: ${item.onlinechange >= 0 ? '#38a169' : '#e53e3e'}; font-size: 12px; margin-top: 5px;">
+                            ${item.onlinechange >= 0 ? '+' : ''}${formatNumber(item.onlinechange)}
+                        </div>
+                    </div>
+                `;
+                
+                dataList.appendChild(dataItem);
+            });
+            
+            // 更新数据计数
+            dataCount.textContent = `共 ${data.length} 条记录`;
+            
+            // 更新统计数据
+            updateStats(data);
+            
+            // 渲染5位数字码
+            renderCodeDigits(data);
+        }
+        
+        // 获取数据
+        async function fetchData() {
+            // 显示加载状态
+            fetchBtn.disabled = true;
+            loading.classList.add('active');
+            errorMessage.classList.remove('active');
+            
+            try {
+                console.log('正在请求数据...');
+                
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                console.log('服务器响应:', result);
+                
+                if (result.success) {
+                    // 成功获取数据
+                    console.log('腾讯IM在线数据:', result.data);
+                    
+                    // 渲染数据
+                    renderData(result.data);
+                    
+                    // 显示成功提示
+                    fetchBtn.textContent = '刷新数据';
+                    
+                } else {
+                    // 服务器返回错误
+                    throw new Error(result.message || '服务器返回错误');
+                }
+                
+            } catch (error) {
+                console.error('获取失败:', error);
+                
+                // 显示错误信息
+                errorDetail.textContent = error.message;
+                errorMessage.classList.add('active');
+                
+                // 如果数据列表为空，显示空状态
+                if (dataList.children.length === 0 || emptyState.style.display !== 'none') {
+                    emptyState.style.display = 'block';
+                }
+                
+            } finally {
+                // 恢复按钮状态
+                fetchBtn.disabled = false;
+                loading.classList.remove('active');
+            }
+        }
+        
+        // 绑定按钮点击事件
+        fetchBtn.addEventListener('click', fetchData);
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，等待用户点击按钮获取数据...');
+            console.log('代理服务器地址:', proxyUrl);
+        });
+    </script>
+</body>
+</html>
