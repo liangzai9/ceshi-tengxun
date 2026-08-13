@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>腾讯IM在线人数查询与数据统计</title>
+
+    <style>
+      .beijing-time {
+        margin-top: 12px;
+        text-align: center;
+        font-size: 22px;
+        font-weight: bold;
+        color: #089a3e;
+        letter-spacing: 2px;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Microsoft YaHei", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 10px;
+        color: #333;
+      }
+
+      .container {
+        background: #fff;
+        border-radius: 16px;
+        padding: 15px;
+        width: 100%;
+        max-width: 1100px;
+        margin: 70px auto 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      }
+
+      h1 {
+        font-size: 24px;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 15px;
+      }
+
+      .floating-btn-container {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .fetch-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
+      }
+
+      .fetch-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .stop-btn {
+        background: #f56565;
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(245, 101, 101, 0.35);
+        white-space: nowrap;
+      }
+
+      .stop-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 15px 0;
+      }
+
+      .loading.active {
+        display: block;
+      }
+
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 4px solid #eee;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        margin: auto;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error-message {
+        display: none;
+        background: #fff5f5;
+        color: #e53e3e;
+        padding: 12px;
+        border-radius: 10px;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+
+      .error-message.active {
+        display: block;
+      }
+
+      /* 数据列表 */
+
+      .data-list {
+        margin-top: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .data-item {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .item-index {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #667eea;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+
+      .item-content {
+        flex: 1;
+      }
+
+      .item-value {
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .item-time {
+        font-size: 15px;
+        color: #888;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #888;
+        padding: 30px 0;
+      }
+
+      /* 输入框区域 */
+
+      .input-section {
+        margin-top: 15px;
+      }
+
+      .input-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #444;
+      }
+
+      .input-container {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 8px;
+        overflow-x: auto;
+      }
+
+      .input-box input {
+        width: 28px;
+        height: 19px;
+        border: 1px solid #7b5b5b;
+        border-radius: 2px;
+        text-align: center;
+        font-size: 18px;
+        /* font-weight: bold; */
+        background: #fafafa;
+      }
+
+      /* 统计区域 */
+
+      .stats-section {
+        margin-top: 10px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 5px;
+      }
+
+      .stats-title {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      .stats-column {
+        background: #fff;
+        border-radius: 14px;
+        padding: 5px;
+      }
+
+      .stats-column-title {
+        text-align: center;
+        font-size: 18px;
+        /* font-weight: bold; */
+        color: #5a67d8;
+        margin-bottom: 5px;
+      }
+
+      .small-input-wrap {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+
+      .small-input {
+        width: 100px;
+        height: 30px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 20px;
+      }
+
+      .digit-stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+      }
+
+      .digit-item {
+        background: #f7f7f7;
+        border-radius: 10px;
+        padding: 5px 5px;
+        text-align: center;
+      }
+
+      .digit-item.highlight {
+        border: 2px solid #ff6b6b;
+        background: #fff5f5;
+      }
+
+      .digit-number {
+        font-size: 26px;
+        font-weight: bold;
+        color: #4a5568;
+      }
+
+      .digit-count {
+        margin-top: 5px;
+        font-size: 13px;
+        color: #718096;
+      }
+
+      .digit-item.highlight .digit-number,
+      .digit-item.highlight .digit-count {
+        color: #e53e3e;
+      }
+
+      /* 手机端 */
+
+      @media (max-width: 768px) {
+        body {
+          padding: 6px;
+        }
+
+        .container {
+          padding: 12px;
+          margin-top: 65px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .input-container {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .digit-stats {
+          grid-template-columns: repeat(5, 1fr);
+        }
+
+        .digit-number {
+          font-size: 20px;
+        }
+
+        .data-list {
+          max-height: 150px;
+        }
+
+        .fetch-btn {
+          padding: 9px 12px;
+          font-size: 12px;
+        }
+
+        .stop-btn {
+          padding: 9px 12px;
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="floating-btn-container">
+      <button class="fetch-btn" id="fetchBtn">自动刷新</button>
+      <button class="stop-btn" id="stopBtn" disabled>停止刷新</button>
+    </div>
+
+    <div class="container">
+      <h1>腾讯IM在线人数查询与数据统计</h1>
+      <div class="subtitle">点击按钮获取最新在线数据</div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div style="margin-top: 8px; color: #666">正在获取数据...</div>
+      </div>
+
+      <div class="error-message" id="errorMessage">
+        <div id="errorDetail"></div>
+      </div>
+
+      <!-- 数据列表 -->
+      <div class="data-list" id="dataList">
+        <div class="empty-state">暂无数据，请点击按钮获取</div>
+      </div>
+      <!-- 北京时间 -->
+      <div class="beijing-time" id="beijingTime">北京时间：00:00:00</div>
+
+      <!-- 输入框 -->
+      <div class="input-section">
+        <div class="input-title">第一组输入框（前两位）</div>
+        <div class="input-container" id="firstGroupInputs"></div>
+
+        <br />
+
+        <div class="input-title">第二组输入框（后两位）</div>
+        <div class="input-container" id="secondGroupInputs"></div>
+      </div>
+
+      <!-- 统计 -->
+      <div class="stats-section" id="statsSection" style="display: none">
+        <div class="stats-grid">
+          <!-- 第一组 -->
+          <div class="stats-column">
+            <div class="stats-column-title">第一组数字统计（前两位）</div>
+
+            <div class="small-input-wrap">
+              <input type="text" class="small-input" />
+            </div>
+
+            <div class="digit-stats" id="firstGroupStats"></div>
+          </div>
+
+          <!-- 第二组 -->
+          <div class="stats-column">
+            <div class="stats-column-title">第二组数字统计（后两位）</div>
+
+            <div class="small-input-wrap">
+              <input type="text" class="small-input" />
+            </div>
+
+            <div class="digit-stats" id="secondGroupStats"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const beijingTime = document.getElementById("beijingTime");
+      const fetchBtn = document.getElementById("fetchBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const loading = document.getElementById("loading");
+      const errorMessage = document.getElementById("errorMessage");
+      const errorDetail = document.getElementById("errorDetail");
+      const dataList = document.getElementById("dataList");
+
+      const firstGroupInputs = document.getElementById("firstGroupInputs");
+      const secondGroupInputs = document.getElementById("secondGroupInputs");
+
+      const firstGroupStats = document.getElementById("firstGroupStats");
+      const secondGroupStats = document.getElementById("secondGroupStats");
+
+      const statsSection = document.getElementById("statsSection");
+
+      const proxyBaseUrl = "http://192.9.153.212:3000/get-data";
+      let autoRefreshEnabled = false;
+      let scheduledRefreshTimer = null;
+      let retryTimer = null;
+      let isFetching = false;
+
+      function initInputBoxes() {
+        firstGroupInputs.innerHTML = "";
+        secondGroupInputs.innerHTML = "";
+
+        for (let i = 0; i < 10; i++) {
+          const first = document.createElement("div");
+          first.className = "input-box";
+          first.innerHTML = `<input type="text" readonly id="first-${i}">`;
+          firstGroupInputs.appendChild(first);
+
+          const second = document.createElement("div");
+          second.className = "input-box";
+          second.innerHTML = `<input type="text" readonly id="second-${i}">`;
+          secondGroupInputs.appendChild(second);
+        }
+      }
+
+      function generateFiveDigitCode(number) {
+        const numStr = number.toString();
+
+        let sum = 0;
+
+        for (let char of numStr) {
+          sum += parseInt(char);
+        }
+
+        const firstDigit = sum % 10;
+        const lastFour = numStr.slice(-4).padStart(4, "0");
+
+        return `${firstDigit}${lastFour}`;
+      }
+
+      function countDigitOccurrences(arr) {
+        const counts = {};
+
+        for (let i = 0; i <= 9; i++) {
+          counts[i] = 0;
+        }
+
+        arr.forEach((num) => {
+          counts[num]++;
+        });
+
+        return counts;
+      }
+
+      function findLeastFrequent(counts, digits) {
+        const lastPositions = new Map();
+
+        digits.forEach((digit, index) => {
+          lastPositions.set(Number(digit), index);
+        });
+
+        const sorted = Object.entries(counts)
+          .map(([digit, count]) => {
+            const numericDigit = Number(digit);
+
+            return {
+              digit: numericDigit,
+              count,
+              lastIndex: lastPositions.get(numericDigit) ?? -1,
+            };
+          })
+          .sort(
+            (a, b) =>
+              a.count - b.count ||
+              b.lastIndex - a.lastIndex ||
+              b.digit - a.digit,
+          );
+
+        return [sorted[0].digit, sorted[1].digit];
+      }
+
+      function renderStats(firstDigits, secondDigits) {
+        const firstCounts = countDigitOccurrences(firstDigits);
+        const secondCounts = countDigitOccurrences(secondDigits);
+
+        const firstLeast = findLeastFrequent(firstCounts, firstDigits);
+        const secondLeast = findLeastFrequent(secondCounts, secondDigits);
+
+        firstGroupStats.innerHTML = "";
+        secondGroupStats.innerHTML = "";
+
+        for (let i = 0; i <= 9; i++) {
+          const item = document.createElement("div");
+
+          item.className = `digit-item ${firstLeast.includes(i) ? "highlight" : ""}`;
+
+          item.innerHTML = `
+            <div class="digit-number">${i}</div>
+            <div class="digit-count">${firstCounts[i]}次</div>
+        `;
+
+          firstGroupStats.appendChild(item);
+        }
+
+        for (let i = 0; i <= 9; i++) {
+          const item = document.createElement("div");
+
+          item.className = `digit-item ${secondLeast.includes(i) ? "highlight" : ""}`;
+
+          item.innerHTML = `
+            <div class="digit-number">${i}</div>
+            <div class="digit-count">${secondCounts[i]}次</div>
+        `;
+
+          secondGroupStats.appendChild(item);
+        }
+
+        statsSection.style.display = "block";
+      }
+
+      function renderData(data) {
+        dataList.innerHTML = "";
+
+        const firstDigits = [];
+        const secondDigits = [];
+
+        data.slice(0, 10).forEach((item, index) => {
+          const code = generateFiveDigitCode(item.onlinenumber);
+
+          const firstTwo = code.substring(0, 2);
+          const secondTwo = code.substring(3, 5);
+
+          document.getElementById(`first-${index}`).value = firstTwo;
+          document.getElementById(`second-${index}`).value = secondTwo;
+
+          firstDigits.push(firstTwo[0]);
+          firstDigits.push(firstTwo[1]);
+
+          secondDigits.push(secondTwo[0]);
+          secondDigits.push(secondTwo[1]);
+
+          const div = document.createElement("div");
+
+          div.className = "data-item";
+
+          div.innerHTML = `
+            <div class="item-index">${index + 1}</div>
+
+            <div class="item-content">
+                <div class="item-value">${item.onlinenumber}</div>
+            </div>
+
+            <div class="item-time">${item.onlinetime}</div>
+        `;
+
+          dataList.appendChild(div);
+        });
+
+        renderStats(firstDigits, secondDigits);
+      }
+
+      async function fetchData() {
+        if (isFetching) {
+          return false;
+        }
+
+        const currentScroll = window.scrollY;
+        isFetching = true;
+
+        loading.classList.add("active");
+
+        errorMessage.classList.remove("active");
+
+        try {
+          const controller = new AbortController();
+
+          const timeoutId = setTimeout(() => {
+            controller.abort();
+          }, 10000);
+
+          const requestUrl = `${proxyBaseUrl}?t=${Date.now()}`;
+
+          const response = await fetch(requestUrl, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP错误:${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.success) {
+            renderData(result.data);
+            window.scrollTo(0, currentScroll);
+            return true;
+          } else {
+            throw new Error(result.message || "获取失败");
+          }
+        } catch (error) {
+          if (error.name === "AbortError") {
+            errorDetail.textContent = "请求超时，请稍后重试";
+          } else {
+            errorDetail.textContent = error.message;
+          }
+
+          errorMessage.classList.add("active");
+          return false;
+        } finally {
+          isFetching = false;
+          loading.classList.remove("active");
+        }
+      }
+
+      function clearRefreshTimers() {
+        clearTimeout(scheduledRefreshTimer);
+        clearTimeout(retryTimer);
+        scheduledRefreshTimer = null;
+        retryTimer = null;
+      }
+
+      function getMillisecondsUntilNext06() {
+        const now = new Date();
+        const millisecondsIntoMinute = now.getSeconds() * 1000 + now.getMilliseconds();
+        const targetMilliseconds = 6000;
+
+        return millisecondsIntoMinute < targetMilliseconds
+          ? targetMilliseconds - millisecondsIntoMinute
+          : 60000 - millisecondsIntoMinute + targetMilliseconds;
+      }
+
+      function scheduleNextRefresh() {
+        if (!autoRefreshEnabled) {
+          return;
+        }
+
+        clearTimeout(scheduledRefreshTimer);
+        scheduledRefreshTimer = setTimeout(
+          runAutomaticRefresh,
+          getMillisecondsUntilNext06(),
+        );
+      }
+
+      function scheduleRetry() {
+        if (!autoRefreshEnabled) {
+          return;
+        }
+
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(runAutomaticRefresh, 5000);
+      }
+
+      async function runAutomaticRefresh() {
+        if (!autoRefreshEnabled) {
+          return;
+        }
+
+        scheduledRefreshTimer = null;
+        retryTimer = null;
+
+        const succeeded = await fetchData();
+
+        if (!autoRefreshEnabled) {
+          return;
+        }
+
+        if (succeeded) {
+          scheduleNextRefresh();
+        } else {
+          scheduleRetry();
+        }
+      }
+
+      function startAutoRefresh() {
+        if (autoRefreshEnabled) {
+          return;
+        }
+
+        autoRefreshEnabled = true;
+        fetchBtn.textContent = "自动刷新中";
+        fetchBtn.disabled = true;
+        stopBtn.disabled = false;
+        errorMessage.classList.remove("active");
+        runAutomaticRefresh();
+      }
+
+      function stopAutoRefresh() {
+        autoRefreshEnabled = false;
+        clearRefreshTimers();
+        fetchBtn.textContent = "自动刷新";
+        fetchBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+
+      fetchBtn.addEventListener("click", startAutoRefresh);
+      stopBtn.addEventListener("click", stopAutoRefresh);
+
+      window.onload = () => {
+        initInputBoxes();
+
+        updateBeijingTime();
+        setInterval(updateBeijingTime, 1000);
+      };
+      function updateBeijingTime() {
+        const now = new Date();
+
+        const time = now.toLocaleTimeString("zh-CN", {
+          hour12: false,
+          timeZone: "Asia/Shanghai",
+        });
+
+        beijingTime.textContent = "北京时间：" + time;
+      }
+    </script>
+  </body>
+</html>
